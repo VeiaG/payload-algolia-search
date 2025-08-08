@@ -28,11 +28,27 @@ export const ReindexButton: React.FC<{ collectionSlug: string }> = ({ collection
   }
 
   return (
-    <div style={{ marginBottom: '1rem' }}>
-      <Button disabled={loading} onClick={handleClick}>
-        {loading ? 'Indexing...' : 'Index all to Algolia'}
-      </Button>
-      {status && <p>{status}</p>}
+    <div
+      className="gutter--left gutter--right "
+      style={{
+        alignItems: 'center',
+        display: 'flex',
+        flexDirection: 'row',
+        gap: '2rem',
+        justifyContent: 'flex-end',
+      }}
+    >
+      <div
+        style={{
+          alignItems: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <Button buttonStyle="secondary" disabled={loading} onClick={handleClick}>
+          {loading ? 'Indexing...' : `Index all ${collectionSlug}`}
+        </Button>
+      </div>
     </div>
   )
 }
