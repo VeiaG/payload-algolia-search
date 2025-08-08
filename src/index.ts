@@ -1,60 +1,90 @@
-import type { CollectionSlug, Config } from 'payload'
+import type { Config } from 'payload'
 
-import { customEndpointHandler } from './endpoints/customEndpointHandler.js'
+import { algoliasearch } from 'algoliasearch'
 
-export type PluginAlgoliaSearchConfig = {
-  /**
-   * List of collections to add a custom field
-   */
-  collections?: Partial<Record<CollectionSlug, true>>
-  disabled?: boolean
-}
+import type { PluginAlgoliaSearchConfig } from './types.js'
+
+import { createSearchEndpointHandler } from './endpoints/searchEndpointHandler.js'
+import { createAfterChangeHook } from './hooks/afterChange.js'
+import { createAfterDeleteHook } from './hooks/afterDelete.js'
+import { defaultFieldTransformers } from './lib/transformers.js'
 
 export const pluginAlgoliaSearch =
-  (pluginOptions: PluginAlgoliaSearchConfig) =>
+  (userPluginOptions: PluginAlgoliaSearchConfig) =>
   (config: Config): Config => {
+    const pluginOptions: PluginAlgoliaSearchConfig = {
+      configureIndexOnInit: true,
+      disabled: false,
+      searchEndpoint: '/search',
+      ...userPluginOptions,
+    }
+    // Ensure the plugin is only applied if it is not disabled and has indexFields defined
+    if (pluginOptions.disabled || !pluginOptions.collections) {
+      return config
+    }
+
+    // Merge custom transformers with defaults
+    const fieldTransformers = {
+      ...defaultFieldTransformers,
+      ...pluginOptions.fieldTransformers,
+    }
+
     if (!config.collections) {
       config.collections = []
     }
 
-    config.collections.push({
-      slug: 'plugin-collection',
-      fields: [
-        {
-          name: 'id',
-          type: 'text',
-        },
-      ],
-    })
+    // Apply hooks to specific collection or all collections
+    pluginOptions.collections.forEach((collectionOption) => {
+      const collection = config.collections?.find((c) => c.slug === collectionOption.slug)
 
-    if (pluginOptions.collections) {
-      for (const collectionSlug in pluginOptions.collections) {
-        const collection = config.collections.find(
-          (collection) => collection.slug === collectionSlug,
-        )
-
-        if (collection) {
-          collection.fields.push({
-            name: 'addedByPlugin',
-            type: 'text',
-            admin: {
-              position: 'sidebar',
-            },
-          })
-        }
+      if (!collection) {
+        return
       }
-    }
+      // Add hooks
+      if (!collection.hooks) {
+        collection.hooks = {}
+      }
+      if (!collection.hooks.afterChange) {
+        collection.hooks.afterChange = []
+      }
+      if (!collection.hooks.afterDelete) {
+        collection.hooks.afterDelete = []
+      }
+      if (!collection.admin) {
+        collection.admin = {}
+      }
+      if (!collection.admin.components) {
+        collection.admin.components = {}
+      }
+      if (!collection.admin.components.beforeList) {
+        collection.admin.components.beforeList = []
+      }
 
-    /**
-     * If the plugin is disabled, we still want to keep added collections/fields so the database schema is consistent which is important for migrations.
-     * If your plugin heavily modifies the database schema, you may want to remove this property.
-     */
-    if (pluginOptions.disabled) {
-      return config
-    }
+      collection.admin.components.beforeList.push(`plugin-algolia-search/client#ReindexButton`)
+
+      // Use afterChange to ensure ID is available and pass transformers
+      collection.hooks.afterChange.push(
+        createAfterChangeHook(
+          pluginOptions.credentials,
+          collectionOption.indexFields,
+          fieldTransformers,
+        ),
+      )
+
+      collection.hooks.afterDelete.push(createAfterDeleteHook(pluginOptions.credentials))
+    })
 
     if (!config.endpoints) {
       config.endpoints = []
+    }
+
+    // Add custom endpoint for search functionality
+    if (pluginOptions.searchEndpoint) {
+      config.endpoints.push({
+        handler: createSearchEndpointHandler(pluginOptions.credentials),
+        method: 'get',
+        path: pluginOptions.searchEndpoint,
+      })
     }
 
     if (!config.admin) {
@@ -68,44 +98,48 @@ export const pluginAlgoliaSearch =
     if (!config.admin.components.beforeDashboard) {
       config.admin.components.beforeDashboard = []
     }
-
     config.admin.components.beforeDashboard.push(
       `plugin-algolia-search/client#BeforeDashboardClient`,
     )
-    config.admin.components.beforeDashboard.push(
-      `plugin-algolia-search/rsc#BeforeDashboardServer`,
-    )
+    config.admin.components.beforeDashboard.push(`plugin-algolia-search/rsc#BeforeDashboardServer`)
 
-    config.endpoints.push({
-      handler: customEndpointHandler,
-      method: 'get',
-      path: '/my-plugin-endpoint',
-    })
-
+    // Enhanced onInit function
     const incomingOnInit = config.onInit
 
     config.onInit = async (payload) => {
-      // Ensure we are executing any existing onInit functions before running our own.
+      // Execute any existing onInit functions first
       if (incomingOnInit) {
         await incomingOnInit(payload)
       }
 
-      const { totalDocs } = await payload.count({
-        collection: 'plugin-collection',
-        where: {
-          id: {
-            equals: 'seeded-by-plugin',
-          },
-        },
-      })
+      payload.logger.info('Algolia Search Plugin initialized')
 
-      if (totalDocs === 0) {
-        await payload.create({
-          collection: 'plugin-collection',
-          data: {
-            id: 'seeded-by-plugin',
-          },
-        })
+      // Optionally sync existing data on initialization
+      if (pluginOptions.configureIndexOnInit) {
+        try {
+          const client = algoliasearch(
+            pluginOptions.credentials.appId,
+            pluginOptions.credentials.apiKey,
+          )
+          const allIndexFields = pluginOptions.collections.flatMap(
+            (collection) => collection.indexFields,
+          )
+          const uniqueIndexFields = [...new Set(allIndexFields)]
+
+          // Create or update index settings
+          await client.setSettings({
+            indexName: pluginOptions.credentials.indexName,
+            indexSettings: {
+              attributesToHighlight: uniqueIndexFields,
+              attributesToRetrieve: ['*'],
+              searchableAttributes: uniqueIndexFields,
+            },
+          })
+
+          payload.logger.info('Algolia index settings updated')
+        } catch (error) {
+          payload.logger.error('Failed to initialize Algolia index:', error)
+        }
       }
     }
 

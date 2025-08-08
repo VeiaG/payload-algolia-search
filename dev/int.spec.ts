@@ -4,7 +4,7 @@ import config from '@payload-config'
 import { createPayloadRequest, getPayload } from 'payload'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 
-import { customEndpointHandler } from '../src/endpoints/customEndpointHandler.js'
+import { customEndpointHandler } from '../src/endpoints/searchEndpointHandler.js'
 
 let payload: Payload
 

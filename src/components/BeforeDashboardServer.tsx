@@ -1,19 +1,25 @@
-import type { ServerComponentProps } from 'payload'
-
-import styles from './BeforeDashboardServer.module.css'
-
-export const BeforeDashboardServer = async (props: ServerComponentProps) => {
-  const { payload } = props
-
-  const { docs } = await payload.find({ collection: 'plugin-collection' })
-
+export const BeforeDashboardServer: React.FC = () => {
   return (
-    <div className={styles.wrapper}>
-      <h1>Added by the plugin: Before Dashboard Server</h1>
-      Docs from Local API:
-      {docs.map((doc) => (
-        <div key={doc.id}>{doc.id}</div>
-      ))}
+    <div
+      style={{
+        backgroundColor: '#e8f4fd',
+        border: '1px solid #b3d9ff',
+        borderRadius: '4px',
+        marginBottom: '1rem',
+        padding: '1rem',
+      }}
+    >
+      <h4>Algolia Search Plugin Status</h4>
+      <p>✅ Plugin is active and indexing content</p>
+      <details>
+        <summary>Plugin Information</summary>
+        <ul>
+          <li>Documents are automatically indexed when created or updated</li>
+          <li>Deleted documents are removed from the search index</li>
+          <li>Use the search box above to test your indexed content</li>
+          <li>Use POST /api/algolia-sync?collection=YOUR_COLLECTION to bulk sync existing data</li>
+        </ul>
+      </details>
     </div>
   )
 }

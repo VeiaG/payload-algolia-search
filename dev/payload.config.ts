@@ -38,7 +38,18 @@ const buildConfigWithMemoryDB = async () => {
     collections: [
       {
         slug: 'posts',
-        fields: [],
+        fields: [
+          {
+            name: 'title',
+            type: 'text',
+            required: true,
+          },
+          {
+            name: 'content',
+            type: 'richText',
+            required: true,
+          },
+        ],
       },
       {
         slug: 'media',
@@ -59,8 +70,17 @@ const buildConfigWithMemoryDB = async () => {
     },
     plugins: [
       pluginAlgoliaSearch({
-        collections: {
-          posts: true,
+        collections: [
+          {
+            slug: 'posts',
+            indexFields: ['title', 'content'],
+          },
+        ],
+        configureIndexOnInit: true,
+        credentials: {
+          apiKey: 'ee2987de90d686e31a3023ae03f7b746',
+          appId: '38Q4V5ED3Z',
+          indexName: 'cyberp-test-docs',
         },
       }),
     ],

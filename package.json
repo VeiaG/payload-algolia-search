@@ -116,5 +116,7 @@
     ]
   },
   "registry": "https://registry.npmjs.org/",
-  "dependencies": {}
+  "dependencies": {
+    "algoliasearch": "^5.35.0"
+  }
 }
