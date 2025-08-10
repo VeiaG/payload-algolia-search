@@ -21,9 +21,7 @@ import { StrikethroughFeatureClient as StrikethroughFeatureClient_e70f5e05f09f93
 import { UnderlineFeatureClient as UnderlineFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
-import { ReindexButton as ReindexButton_2441147a1498f4c01750beda1b17f6d0 } from 'plugin-algolia-search/client'
-import { BeforeDashboardClient as BeforeDashboardClient_2441147a1498f4c01750beda1b17f6d0 } from 'plugin-algolia-search/client'
-import { BeforeDashboardServer as BeforeDashboardServer_4feaccfa6f40883854eb2e8fdd01e0df } from 'plugin-algolia-search/rsc'
+import { ReindexButton as ReindexButton_353c5dfae84e6740250a2543e59a2673 } from '@veiag/payload-algolia-search/client'
 
 export const importMap = {
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalCell": RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e,
@@ -49,7 +47,5 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#UnderlineFeatureClient": UnderlineFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#BoldFeatureClient": BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
-  "plugin-algolia-search/client#ReindexButton": ReindexButton_2441147a1498f4c01750beda1b17f6d0,
-  "plugin-algolia-search/client#BeforeDashboardClient": BeforeDashboardClient_2441147a1498f4c01750beda1b17f6d0,
-  "plugin-algolia-search/rsc#BeforeDashboardServer": BeforeDashboardServer_4feaccfa6f40883854eb2e8fdd01e0df
+  "@veiag/payload-algolia-search/client#ReindexButton": ReindexButton_353c5dfae84e6740250a2543e59a2673
 }

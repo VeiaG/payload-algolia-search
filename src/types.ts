@@ -1,6 +1,6 @@
 // File: src/types.ts
 import type { SerializedEditorState } from '@payloadcms/richtext-lexical/lexical'
-import type { CollectionSlug, Field } from 'payload'
+import type { CollectionSlug, Field, PayloadRequest } from 'payload'
 
 /**
  * Credentials for connecting to Algolia.
@@ -21,12 +21,19 @@ export type PluginAlgoliaCredentials = {
 
 export type TransformedFieldValue = boolean | null | number | string | string[]
 
-export type FieldTransformer<T = unknown> = (value: T, fieldConfig?: Field) => TransformedFieldValue
+export type FieldTransformer<T = unknown> = (
+  value: T,
+  fieldConfig?: Field,
+  collectionSlug?: CollectionSlug,
+) => TransformedFieldValue
 
 export type CollectionAlgoliaConfig = {
   indexFields: string[]
   slug: CollectionSlug
+  index?: boolean
 }
+
+export type ReindexAccessFunction = (req: PayloadRequest) => boolean
 
 export type PluginAlgoliaSearchConfig = {
   /**
@@ -55,6 +62,27 @@ export type PluginAlgoliaSearchConfig = {
    * These will be merged with the default transformers.
    */
   fieldTransformers?: Record<string, FieldTransformer>
+  /**
+   * If true, the reindex button will be hidden in the admin panel.
+   * But it can still be accessed via the API.
+   * @default false
+   */
+  hideReindexButton?: boolean
+
+  /**
+   * Function to determine access to the reindex endpoint.
+   * This can be used to implement role-based access control.
+   * @default Boolean(user)
+   */
+  reindexAccess?: ReindexAccessFunction
+
+  /**
+   * Custom endpoint for reindexing collections.
+   * Default endpoint is '/reindex', but can be customized.
+   * If set to false, no reindex endpoint will be created.
+   * @default '/reindex'
+   */
+  reindexEndpoint?: false | string
   /**
    * If true, the plugin will create a custom endpoint for search functionality.
    * Default endpoint is '/search', but can be customized.

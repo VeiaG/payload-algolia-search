@@ -7,7 +7,7 @@ import type { PluginAlgoliaCredentials } from '../types.js'
 export const createSearchEndpointHandler = (credentials: PluginAlgoliaCredentials) => {
   return async (req: PayloadRequest) => {
     try {
-      const { query: searchQuery } = req.query
+      const { query: searchQuery, ...searchParams } = req.query
 
       if (!searchQuery || typeof searchQuery !== 'string') {
         return Response.json(
@@ -36,6 +36,7 @@ export const createSearchEndpointHandler = (credentials: PluginAlgoliaCredential
       const searchResult = await client.searchSingleIndex({
         indexName: credentials.indexName,
         searchParams: {
+          ...(searchParams as Record<string, string>),
           query: searchQuery,
         },
       })

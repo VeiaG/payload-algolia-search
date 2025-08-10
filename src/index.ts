@@ -4,17 +4,19 @@ import { algoliasearch } from 'algoliasearch'
 
 import type { PluginAlgoliaSearchConfig } from './types.js'
 
+import { createReindexEndpointHandler } from './endpoints/reindexEndpointHandler.js'
 import { createSearchEndpointHandler } from './endpoints/searchEndpointHandler.js'
 import { createAfterChangeHook } from './hooks/afterChange.js'
 import { createAfterDeleteHook } from './hooks/afterDelete.js'
 import { defaultFieldTransformers } from './lib/transformers.js'
 
-export const pluginAlgoliaSearch =
+export const algoliaSearchPlugin =
   (userPluginOptions: PluginAlgoliaSearchConfig) =>
   (config: Config): Config => {
     const pluginOptions: PluginAlgoliaSearchConfig = {
       configureIndexOnInit: true,
       disabled: false,
+      reindexEndpoint: '/reindex',
       searchEndpoint: '/search',
       ...userPluginOptions,
     }
@@ -60,7 +62,14 @@ export const pluginAlgoliaSearch =
         collection.admin.components.beforeList = []
       }
 
-      collection.admin.components.beforeList.push(`plugin-algolia-search/client#ReindexButton`)
+      if (pluginOptions.reindexEndpoint && !pluginOptions.hideReindexButton) {
+        collection.admin.components.beforeList.push({
+          clientProps: {
+            reindexEndpoint: pluginOptions.reindexEndpoint,
+          },
+          path: '@veiag/payload-algolia-search/client#ReindexButton',
+        })
+      }
 
       // Use afterChange to ensure ID is available and pass transformers
       collection.hooks.afterChange.push(
@@ -87,21 +96,29 @@ export const pluginAlgoliaSearch =
       })
     }
 
+    // Add custom endpoint for reindex functionality
+    if (pluginOptions.reindexEndpoint) {
+      //get all collections configs , that are configured for indexing
+      const collectionsSlugs = pluginOptions.collections.flatMap((c) => c.slug)
+      const collectionsConfigs = config.collections?.filter((c) =>
+        collectionsSlugs.includes(c.slug),
+      )
+
+      config.endpoints.push({
+        handler: createReindexEndpointHandler(
+          pluginOptions.credentials,
+          pluginOptions.collections.flatMap((c) => c.indexFields),
+          fieldTransformers,
+          collectionsConfigs,
+        ),
+        method: 'post',
+        path: `${pluginOptions.reindexEndpoint}/:collectionSlug`,
+      })
+    }
+
     if (!config.admin) {
       config.admin = {}
     }
-
-    if (!config.admin.components) {
-      config.admin.components = {}
-    }
-
-    if (!config.admin.components.beforeDashboard) {
-      config.admin.components.beforeDashboard = []
-    }
-    config.admin.components.beforeDashboard.push(
-      `plugin-algolia-search/client#BeforeDashboardClient`,
-    )
-    config.admin.components.beforeDashboard.push(`plugin-algolia-search/rsc#BeforeDashboardServer`)
 
     // Enhanced onInit function
     const incomingOnInit = config.onInit

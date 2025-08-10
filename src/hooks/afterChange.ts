@@ -1,53 +1,10 @@
-import type { CollectionAfterChangeHook, CollectionConfig } from 'payload'
+import type { CollectionAfterChangeHook } from 'payload'
 
 import { algoliasearch } from 'algoliasearch'
 
-import type { FieldTransformer, PluginAlgoliaCredentials, TransformedFieldValue } from '../types.js'
+import type { FieldTransformer, PluginAlgoliaCredentials } from '../types.js'
 
-import { getFieldConfig } from '../lib/transformers.js'
-
-// Enhanced pick function with transformers
-const pick = (
-  obj: any,
-  fields: string[],
-  collection: CollectionConfig,
-  transformers: Record<string, FieldTransformer>,
-): { [key: string]: TransformedFieldValue } => {
-  const result: { [key: string]: TransformedFieldValue } = {}
-
-  fields.forEach((field) => {
-    const keys = field.split('.')
-    let current = obj
-
-    // Navigate to the nested value
-    for (let i = 0; i < keys.length; i++) {
-      if (current?.[keys[i]] === undefined) {
-        return
-      }
-      current = current[keys[i]]
-    }
-
-    // Get field configuration
-    const fieldConfig = getFieldConfig(collection, field)
-    const fieldType = fieldConfig?.type
-
-    // Apply transformer if available
-    let transformedValue = current
-    if (fieldType && transformers[fieldType]) {
-      transformedValue = transformers[fieldType](current, fieldConfig)
-    } else if (current !== null && current !== undefined) {
-      // Default transformation for unhandled types
-      transformedValue = typeof current === 'object' ? JSON.stringify(current) : String(current)
-    }
-
-    // Only include non-null values
-    if (transformedValue !== null && transformedValue !== undefined) {
-      result[field] = transformedValue
-    }
-  })
-
-  return result
-}
+import { transformForAlgolia } from '../lib/transformers.js'
 
 export const createAfterChangeHook = (
   credentials: PluginAlgoliaCredentials,
@@ -65,7 +22,7 @@ export const createAfterChangeHook = (
       const client = algoliasearch(credentials.appId, credentials.apiKey)
 
       // Pick and transform the specified fields for indexing
-      const indexData = pick(doc, indexFields, collection, fieldTransformers)
+      const indexData = transformForAlgolia(doc, indexFields, collection, fieldTransformers)
 
       // Add collection slug to the index data
       indexData.collection = collection.slug

@@ -1,218 +1,206 @@
-# Payload Plugin Template
+# Payload Algolia Search Plugin
 
-A template repo to create a [Payload CMS](https://payloadcms.com) plugin.
+[![npm version](https://img.shields.io/npm/v/@veiag/payload-algolia-search.svg)](https://www.npmjs.com/package/@veiag/payload-algolia-search)
 
-Payload is built with a robust infrastructure intended to support Plugins with ease. This provides a simple, modular, and reusable way for developers to extend the core capabilities of Payload.
+A powerful, feature-rich plugin to sync your [Payload CMS](https://payloadcms.com) collections with [Algolia](https://www.algolia.com/) to enable fast and extensive search capabilities.
 
-To build your own Payload plugin, all you need is:
+---
 
-- An understanding of the basic Payload concepts
-- And some JavaScript/Typescript experience
+## Features
 
-## Background
+-   **Automatic Syncing**: Automatically syncs documents to your Algolia index when they are created, updated, or deleted in Payload.
+-   **Collection-Specific Configuration**: Configure which collections and which fields within those collections should be indexed.
+-   **Re-indexing UI & Endpoint**: Includes a "Re-index" button in the admin panel for configured collections and a secure API endpoint to re-sync all documents on demand.
+-   **Search Endpoint**: Provides a simple, secure endpoint to perform search queries directly against your Algolia index.
+-   **Custom Field Transformers**: Provides hooks to transform complex field data (like Lexical Rich Text) into a searchable string format before indexing.
+-   **Access Control**: Fine-grained control over who can trigger a re-index operation.
+-   **Automatic Index Configuration**: Can be configured to set up Algolia index settings (like `searchableAttributes`) on server start-up.
 
-Here is a short recap on how to integrate plugins with Payload, to learn more visit the [plugin overview page](https://payloadcms.com/docs/plugins/overview).
+## Installation
 
-### How to install a plugin
+```bash
+# pnpm
+pnpm add @veiag/payload-algolia-search
 
-To install any plugin, simply add it to your payload.config() in the Plugin array.
+# npm
+npm install @veiag/payload-algolia-search
+
+# yarn
+yarn add @veiag/payload-algolia-search
+```
+
+## Quick Start
+
+In your `payload.config.ts`, import the plugin and add it to the `plugins` array.
 
 ```ts
-import myPlugin from 'my-plugin'
+// payload.config.ts
+import { buildConfig } from 'payload/config'
+import { algoliaSearchPlugin } from '@veiag/payload-algolia-search'
+import { MyCollection } from './collections/MyCollection'
 
-export const config = buildConfig({
+export default buildConfig({
+  // ... your base config
+  collections: [MyCollection],
   plugins: [
-    // You can pass options to the plugin
-    myPlugin({
-      enabled: true,
+    algoliaSearchPlugin({
+      credentials: {
+        appId: process.env.ALGOLIA_APP_ID,
+        apiKey: process.env.ALGOLIA_API_KEY, // IMPORTANT: This is your ADMIN API Key
+        indexName: process.env.ALGOLIA_INDEX_NAME,
+      },
+      collections: [
+        {
+          slug: 'my-collection', // Slug of the collection to sync
+          indexFields: ['title', 'someOtherField'], // Fields to be indexed
+        },
+      ],
     }),
   ],
 })
 ```
 
-### Initialization
+## Configuration
 
-The initialization process goes in the following order:
+The plugin is configured by passing a `PluginAlgoliaSearchConfig` object.
 
-1. Incoming config is validated
-2. **Plugins execute**
-3. Default options are integrated
-4. Sanitization cleans and validates data
-5. Final config gets initialized
+| Option                 | Type                                       | Description                                                                                                                                                           | Default                  |
+| ---------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| `credentials`          | `PluginAlgoliaCredentials`                 | **Required.** Your Algolia App ID, Admin API Key, and the target Index Name. The Admin key is required for write operations and should be kept secret.                 | -                        |
+| `collections`          | `CollectionAlgoliaConfig[]`                | **Required.** An array of objects defining which collections and fields to sync.                                                                                      | -                        |
+| `searchEndpoint`       | `string \| false`                          | Path for the search endpoint. Set to `false` to disable.                                                                                                              | `'/search'`              |
+| `reindexEndpoint`      | `string \| false`                          | Path for the re-indexing endpoint. Set to `false` to disable. The final path will be `/:reindexEndpoint/:collectionSlug`.                                              | `'/reindex'`             |
+| `configureIndexOnInit` | `boolean`                                  | If `true`, the plugin will automatically configure your Algolia index settings (`searchableAttributes`, etc.) based on your `collections` config when Payload starts. | `true`                   |
+| `hideReindexButton`    | `boolean`                                  | If `true`, the "Re-index" button will not be shown in the collection's list view in the admin panel. The endpoint remains active.                                      | `false`                  |
+| `reindexAccess`        | `(req: PayloadRequest) => boolean`         | A function to control who has access to the re-index endpoint. By default, any logged-in user has access.                                                             | `({ req }) => !!req.user` |
+| `fieldTransformers`    | `Record<string, FieldTransformer>`         | An object where keys are field types (e.g., `richText`, `relationship`) and values are functions to transform that field's data before indexing.                      | (uses default transformers) |
+| `disabled`             | `boolean`                                  | A master switch to disable the plugin entirely.                                                                                                                       | `false`                  |
 
-## Building the Plugin
+---
 
-When you build a plugin, you are purely building a feature for your project and then abstracting it outside of the project.
+## Endpoints
 
-### Template Files
+### Search
 
-In the Payload [plugin template](https://github.com/payloadcms/payload/tree/main/templates/plugin), you will see a common file structure that is used across all plugins:
+The plugin creates a simple, secure proxy to Algolia's search API.
 
-1. root folder
-2. /src folder
-3. /dev folder
+-   **Method**: `GET`
+-   **Path**: `/search` (or your custom `searchEndpoint`)
+-   **Query Params**:
+    -   `query`: The search term.
+    -   Any other valid Algolia search parameters can also be passed (e.g., `hitsPerPage`, `filters`).
 
-#### Root
+**Example:**
 
-In the root folder, you will see various files that relate to the configuration of the plugin. We set up our environment in a similar manner in Payload core and across other projects, so hopefully these will look familiar:
+```
+GET /api/search?query=my-search-term&hitsPerPage=5
+```
 
-- **README**.md\* - This contains instructions on how to use the template. When you are ready, update this to contain instructions on how to use your Plugin.
-- **package**.json\* - Contains necessary scripts and dependencies. Overwrite the metadata in this file to describe your Plugin.
-- .**eslint**.config.js - Eslint configuration for reporting on problematic patterns.
-- .**gitignore** - List specific untracked files to omit from Git.
-- .**prettierrc**.json - Configuration for Prettier code formatting.
-- **tsconfig**.json - Configures the compiler options for TypeScript
-- .**swcrc** - Configuration for SWC, a fast compiler that transpiles and bundles TypeScript.
-- **vitest**.config.js - Config file for Vitest, defining how tests are run and how modules are resolved
+### Re-index a Collection
 
-**IMPORTANT\***: You will need to modify these files.
+This endpoint allows you to re-sync all documents from a specific Payload collection to your Algolia index.
 
-#### Dev
+-   **Method**: `POST`
+-   **Path**: `/reindex/:collectionSlug` (or your custom `reindexEndpoint`)
+-   **Access Control**: Governed by the `reindexAccess` function.
 
-In the dev folder, you’ll find a basic payload project, created with `npx create-payload-app` and the blank template.
+This is the same endpoint triggered by the "Re-index" button in the admin UI.
 
-**IMPORTANT**: Make a copy of the `.env.example` file and rename it to `.env`. Update the `DATABASE_URI` to match the database you are using and your plugin name. Update `PAYLOAD_SECRET` to a unique string.
-**You will not be able to run `pnpm/yarn dev` until you have created this `.env` file.**
+## Custom Field Transformers
 
-`myPlugin` has already been added to the `payload.config()` file in this project.
+Some Payload fields store complex data structures (e.g., a `group` field) that aren't inherently searchable as a single text value. The Algolia Search Plugin uses "transformers" to convert this complex data into a simple `string`, `number`, `boolean`, or `string[]` that Algolia can effectively index.
+
+The plugin comes with robust default transformers for most standard field types, including `richText`, `relationship`, and `upload`. You typically only need to write a custom transformer when you have a `group` or a custom field type with a structure that the plugin can't automatically flatten into a meaningful string.
+
+A transformer is a function you define in the `fieldTransformers` object in the plugin configuration. The key is the `type` of the field (from your collection config), and the value is your transformer function.
+
+### Transformer Function Signature
+
+Your transformer function receives three arguments:
+
+1.  `value` (`unknown`): The raw value of the field from the Payload document.
+2.  `fieldConfig` (`Field`): The full configuration object for the field being transformed. This is useful for accessing properties you may have defined in your collection's field array.
+3.  `collectionSlug` (`CollectionSlug`): The slug of the collection the document belongs to. This allows you to have different transformation logic for the same field type across different collections.
+
+The function must return a `TransformedFieldValue`, which is one of: `string | number | boolean | string[] | null`.
+
+### Example: Transforming a `group` field
+
+A common use case is indexing a `group` field that contains multiple sub-fields. For example, a `post` collection might have an `authorDetails` group containing the author's name and title, and you want Algolia to be able to search both sub-fields as a single, combined text value.
+
+Let's assume your `posts` collection has a `group` field named `authorDetails`:
 
 ```ts
-plugins: [
-  myPlugin({
-    collections: {
-      posts: true,
+// collections/Posts.ts
+import { CollectionConfig } from 'payload/types'
+
+export const Posts: CollectionConfig = {
+  slug: 'posts',
+  fields: [
+    {
+      name: 'title',
+      type: 'text',
+      required: true,
     },
-  }),
-]
-```
-
-Later when you rename the plugin or add additional options, **make sure to update it here**.
-
-You may wish to add collections or expand the test project depending on the purpose of your plugin. Just make sure to keep this dev environment as simplified as possible - users should be able to install your plugin without additional configuration required.
-
-When you’re ready to start development, initiate the project with `pnpm/npm/yarn dev` and pull up [http://localhost:3000](http://localhost:3000) in your browser.
-
-#### Src
-
-Now that we have our environment setup and we have a dev project ready to - it’s time to build the plugin!
-
-**index.ts**
-
-The essence of a Payload plugin is simply to extend the payload config - and that is exactly what we are doing in this file.
-
-```ts
-export const myPlugin =
-  (pluginOptions: MyPluginConfig) =>
-  (config: Config): Config => {
-    // do cool stuff with the config here
-
-    return config
-  }
-```
-
-First, we receive the existing payload config along with any plugin options.
-
-From here, you can extend the config as you wish.
-
-Finally, you return the config and that is it!
-
-##### Spread Syntax
-
-Spread syntax (or the spread operator) is a feature in JavaScript that uses the dot notation **(...)** to spread elements from arrays, strings, or objects into various contexts.
-
-We are going to use spread syntax to allow us to add data to existing arrays without losing the existing data. It is crucial to spread the existing data correctly – else this can cause adverse behavior and conflicts with Payload config and other plugins.
-
-Let’s say you want to build a plugin that adds a new collection:
-
-```ts
-config.collections = [
-  ...(config.collections || []),
-  // Add additional collections here
-]
-```
-
-First we spread the `config.collections` to ensure that we don’t lose the existing collections, then you can add any additional collections just as you would in a regular payload config.
-
-This same logic is applied to other properties like admin, hooks, globals:
-
-```ts
-config.globals = [
-  ...(config.globals || []),
-  // Add additional globals here
-]
-
-config.hooks = {
-  ...(incomingConfig.hooks || {}),
-  // Add additional hooks here
+    // ... other fields
+    {
+      name: 'authorDetails',
+      type: 'group',
+      fields: [
+        {
+          name: 'name',
+          type: 'text',
+        },
+        {
+          name: 'title',
+          type: 'text',
+        },
+      ],
+    },
+  ],
 }
 ```
 
-Some properties will be slightly different to extend, for instance the onInit property:
+To index the `authorDetails` field, you would first add `'authorDetails'` to your `indexFields` in the plugin config. Then, you would create a transformer for the `group` type.
 
 ```ts
-import { onInitExtension } from './onInitExtension' // example file
+// payload.config.ts
+import { buildConfig } from 'payload/config'
+import { algoliaSearchPlugin } from '@veiag/payload-algolia-search'
 
-config.onInit = async (payload) => {
-  if (incomingConfig.onInit) await incomingConfig.onInit(payload)
-  // Add additional onInit code by defining an onInitExtension function
-  onInitExtension(pluginOptions, payload)
-}
-```
-
-If you wish to add to the onInit, you must include the **async/await**. We don’t use spread syntax in this case, instead you must await the existing `onInit` before running additional functionality.
-
-In the template, we have stubbed out some addition `onInit` actions that seeds in a document to the `plugin-collection`, you can use this as a base point to add more actions - and if not needed, feel free to delete it.
-
-##### Types.ts
-
-If your plugin has options, you should define and provide types for these options.
-
-```ts
-export type MyPluginConfig = {
-  /**
-   * List of collections to add a custom field
-   */
-  collections?: Partial<Record<CollectionSlug, true>>
-  /**
-   * Disable the plugin
-   */
-  disabled?: boolean
-}
-```
-
-If possible, include JSDoc comments to describe the options and their types. This allows a developer to see details about the options in their editor.
-
-##### Testing
-
-Having a test suite for your plugin is essential to ensure quality and stability. **Vitest** is a fast, modern testing framework that works seamlessly with Vite and supports TypeScript out of the box.
-
-Vitest organizes tests into test suites and cases, similar to other testing frameworks. We recommend creating individual tests based on the expected behavior of your plugin from start to finish.
-
-Writing tests with Vitest is very straightforward, and you can learn more about how it works in the [Vitest documentation.](https://vitest.dev/)
-
-For this template, we stubbed out `int.spec.ts` in the `dev` folder where you can write your tests.
-
-```ts
-describe('Plugin tests', () => {
-  // Create tests to ensure expected behavior from the plugin
-  it('some condition that must be met', () => {
-   // Write your test logic here
-   expect(...)
-  })
+export default buildConfig({
+  // ...
+  plugins: [
+    algoliaSearchPlugin({
+      // ... credentials
+      collections: [
+        {
+          slug: 'posts',
+          indexFields: ['title', 'authorDetails'], // We want to index the 'authorDetails' group
+        },
+      ],
+      fieldTransformers: {
+        group: (value, fieldConfig) => {
+          // Check if this is the 'authorDetails' group field
+          if (fieldConfig.name === 'authorDetails' && value) {
+            // Combine the sub-fields into a single searchable string
+            const { name, title } = value
+            return [name, title].filter(Boolean).join(' ')
+          }
+          
+          // Return null for any other group fields you don't want to index
+          return null
+        },
+      },
+    }),
+  ],
 })
 ```
 
-## Best practices
+With this configuration, when a `post` is saved, the content of `authorDetails.name` and `authorDetails.title` will be combined and stored in the `authorDetails` attribute of your Algolia record, making it fully searchable.
 
-With this tutorial and the plugin template, you should have everything you need to start building your own plugin.
-In addition to the setup, here are other best practices aim we follow:
 
-- **Providing an enable / disable option:** For a better user experience, provide a way to disable the plugin without uninstalling it. This is especially important if your plugin adds additional webpack aliases, this will allow you to still let the webpack run to prevent errors.
-- **Include tests in your GitHub CI workflow**: If you’ve configured tests for your package, integrate them into your workflow to run the tests each time you commit to the plugin repository. Learn more about [how to configure tests into your GitHub CI workflow.](https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs)
-- **Publish your finished plugin to NPM**: The best way to share and allow others to use your plugin once it is complete is to publish an NPM package. This process is straightforward and well documented, find out more [creating and publishing a NPM package here.](https://docs.npmjs.com/creating-and-publishing-scoped-public-packages/).
-- **Add payload-plugin topic tag**: Apply the tag **payload-plugin **to your GitHub repository. This will boost the visibility of your plugin and ensure it gets listed with [existing payload plugins](https://github.com/topics/payload-plugin).
-- **Use [Semantic Versioning](https://semver.org/) (SemVar)** - With the SemVar system you release version numbers that reflect the nature of changes (major, minor, patch). Ensure all major versions reference their Payload compatibility.
 
-# Questions
+## License
 
-Please contact [Payload](mailto:dev@payloadcms.com) with any questions about using this plugin template.
+[MIT](./LICENSE)

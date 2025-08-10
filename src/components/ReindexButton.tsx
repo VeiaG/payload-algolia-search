@@ -2,15 +2,19 @@
 import { Button } from '@payloadcms/ui'
 import React, { useState } from 'react'
 
-export const ReindexButton: React.FC<{ collectionSlug: string }> = ({ collectionSlug }) => {
+export const ReindexButton: React.FC<{ collectionSlug: string; reindexEndpoint?: string }> = ({
+  collectionSlug,
+  reindexEndpoint = '/reindex',
+}) => {
   const [loading, setLoading] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [status, setStatus] = useState<null | string>(null)
 
   const handleClick = async () => {
     setLoading(true)
     setStatus(null)
     try {
-      const res = await fetch(`/api/algolia/reindex/${collectionSlug}`, {
+      const res = await fetch(`/api/${reindexEndpoint}/${collectionSlug}`, {
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
       })

@@ -14,16 +14,16 @@ const richTextTransformer: FieldTransformer<SerializedEditorState> = (value) =>
 
 export const defaultFieldTransformers: FieldTransformers = {
   richText: richTextTransformer,
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   json: (value: any) => (value ? JSON.stringify(value) : null),
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   array: (value: any[]) =>
     Array.isArray(value)
       ? value
           .map((item) => (typeof item === 'object' ? Object.values(item).join(' ') : String(item)))
           .join(', ')
       : null,
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   relationship: (value: any) => {
     if (!value) {
       return null
@@ -73,11 +73,14 @@ export const getFieldConfig = (
 
 // Picks and transforms fields from a document for indexing
 export const transformForAlgolia = (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   doc: any,
   fieldsToIndex: string[],
   collectionConfig: CollectionConfig,
   customTransformers: Record<string, FieldTransformer>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Record<string, any> => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result: Record<string, any> = {}
   const allTransformers = { ...defaultFieldTransformers, ...customTransformers }
 
@@ -98,7 +101,9 @@ export const transformForAlgolia = (
 
     // Apply transformer if available, otherwise use default string conversion
     const transformer = fieldType ? allTransformers[fieldType] : null
-    const transformedValue = transformer ? transformer(value) : String(value)
+    const transformedValue = transformer
+      ? transformer(value, fieldConfig ?? undefined, collectionConfig?.slug)
+      : String(value)
 
     if (transformedValue !== null && transformedValue !== undefined) {
       // Use the field path as the key for Algolia

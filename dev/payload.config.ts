@@ -1,9 +1,9 @@
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { algoliaSearchPlugin } from '@veiag/payload-algolia-search'
 import { MongoMemoryReplSet } from 'mongodb-memory-server'
 import path from 'path'
 import { buildConfig } from 'payload'
-import { pluginAlgoliaSearch } from 'plugin-algolia-search'
 import sharp from 'sharp'
 import { fileURLToPath } from 'url'
 
@@ -69,7 +69,7 @@ const buildConfigWithMemoryDB = async () => {
       await seed(payload)
     },
     plugins: [
-      pluginAlgoliaSearch({
+      algoliaSearchPlugin({
         collections: [
           {
             slug: 'posts',
@@ -78,9 +78,9 @@ const buildConfigWithMemoryDB = async () => {
         ],
         configureIndexOnInit: true,
         credentials: {
-          apiKey: 'ee2987de90d686e31a3023ae03f7b746',
-          appId: '38Q4V5ED3Z',
-          indexName: 'cyberp-test-docs',
+          apiKey: process.env.ALGOLIA_API_KEY!,
+          appId: process.env.ALGOLIA_APP_ID!,
+          indexName: process.env.ALGOLIA_INDEX_NAME!,
         },
       }),
     ],
