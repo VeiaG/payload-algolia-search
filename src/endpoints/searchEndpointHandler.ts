@@ -1,16 +1,20 @@
-import type { Payload, PayloadRequest } from 'payload'
+import type { CollectionConfig, Payload, PayloadRequest, SelectType } from 'payload'
 
 import { algoliasearch, type SearchResponse } from 'algoliasearch'
+import { type ParsedQs } from 'qs-esm'
 
 import type { PluginAlgoliaCredentials } from '../types.js'
 
+type SelectFields = Record<string, SelectType>
+
 /**
  * Fetches full documents from Payload to enrich the search results.
- * @returns A map of objectID -> full Payload document.
+ * @returns A map of objectID -> full or partial Payload document.
  */
 const getEnrichedDocsMap = async (
   payload: Payload,
   searchResult: SearchResponse,
+  selectFields?: SelectFields,
 ): Promise<Record<string, Record<string, unknown>>> => {
   const { hits } = searchResult
 
@@ -42,24 +46,58 @@ const getEnrichedDocsMap = async (
           },
         },
         limit: ids.length,
+        select: selectFields?.[collectionSlug],
+        overrideAccess: false, // Ensure access control is respected
       })
       return result.docs
     },
   )
 
+  console.log(
+    `Fetching ${hits.length} documents from Payload for search results... , \n ids = ${JSON.stringify(hits.map((hit) => hit.objectID))}`,
+  )
   const allEnrichedDocs = (await Promise.all(enrichedDocsPromises)).flat()
 
-  // 3. Create a map for easy lookup on the frontend
+  console.log(`Enriched ${allEnrichedDocs.length} documents from Payload for search results.`)
+  // 3. Create a map for easy lookup
   return allEnrichedDocs.reduce<Record<string, Record<string, unknown>>>((acc, doc) => {
     acc[String(doc.id)] = doc
+
     return acc
   }, {})
+}
+
+/**
+ * Processes the 'select' query parameter into a format suitable for Payload's `find` operation.
+ * It expects a query structure like `select[collection][field]=true`.
+ */
+function processSelect(select: ParsedQs | string | string[] | undefined): SelectFields | undefined {
+  if (typeof select !== 'object' || select === null) {
+    return undefined
+  }
+
+  const processedSelect: SelectFields = {}
+
+  for (const [collection, fields] of Object.entries(select)) {
+    if (typeof fields === 'object' && fields !== null) {
+      processedSelect[collection] = {}
+      for (const [field, value] of Object.entries(fields)) {
+        if (value === 'true') {
+          processedSelect[collection][field] = true
+        } else if (value === 'false') {
+          processedSelect[collection][field] = false
+        }
+      }
+    }
+  }
+
+  return processedSelect
 }
 
 export const createSearchEndpointHandler = (credentials: PluginAlgoliaCredentials) => {
   return async (req: PayloadRequest) => {
     try {
-      const { query: searchQuery, enrichResults, ...searchParams } = req.query
+      const { query: searchQuery, enrichResults, select, ...searchParams } = req.query
 
       if (!searchQuery || typeof searchQuery !== 'string') {
         return Response.json(
@@ -95,14 +133,14 @@ export const createSearchEndpointHandler = (credentials: PluginAlgoliaCredential
 
       let enrichedDocsMap: Record<string, unknown> | undefined
 
-      // If enrichResults is requested, fetch full documents from Payload
       if (enrichResults === 'true') {
-        enrichedDocsMap = await getEnrichedDocsMap(req.payload, searchResult)
+        const selectFields = processSelect(select as ParsedQs)
+        enrichedDocsMap = await getEnrichedDocsMap(req.payload, searchResult, selectFields)
       }
 
       return Response.json({
         ...searchResult,
-        enrichedHits: enrichedDocsMap, // Return enriched docs in a separate field
+        enrichedHits: enrichedDocsMap,
       })
     } catch (error) {
       req.payload.logger.error('Algolia search error:', error)

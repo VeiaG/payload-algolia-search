@@ -70,7 +70,6 @@
     "open": "^10.1.0",
     "payload": "3.37.0",
     "prettier": "^3.4.2",
-    "qs-esm": "7.0.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "rimraf": "3.0.2",
@@ -109,6 +108,7 @@
   },
   "registry": "https://registry.npmjs.org/",
   "dependencies": {
-    "algoliasearch": "^5.35.0"
+    "algoliasearch": "^5.35.0",
+    "qs-esm": "7.0.2"
   }
 }
