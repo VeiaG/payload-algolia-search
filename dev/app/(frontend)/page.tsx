@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 
 const Page = () => {
   const [query, setQuery] = useState('')
+  const [enrich, setEnrich] = useState(false)
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -15,9 +16,20 @@ const Page = () => {
     setLoading(true)
     setError(null)
     setResults(null)
+
     try {
-      const res = await fetch(`/api/search?query=${encodeURIComponent(query)}&hitsPerPage=5`)
+      const params = new URLSearchParams({
+        query,
+        hitsPerPage: '5',
+      })
+
+      if (enrich) {
+        params.append('enrichResults', 'true')
+      }
+
+      const res = await fetch(`/api/search?${params.toString()}`)
       const data = await res.json()
+
       if (res.ok) {
         setResults(data)
       } else {
@@ -31,9 +43,9 @@ const Page = () => {
   }
 
   return (
-    <div style={{ padding: '2rem' }}>
+    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
       <h1>Algolia Search Test</h1>
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
         <input
           type="text"
           value={query}
@@ -45,11 +57,19 @@ const Page = () => {
           {loading ? 'Searching...' : 'Search'}
         </button>
       </div>
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <input type="checkbox" checked={enrich} onChange={(e) => setEnrich(e.target.checked)} />
+          Enrich Results
+        </label>
+      </div>
       {error && <p style={{ color: 'red' }}>{error}</p>}
       {results && (
         <div>
           <h2>Search Results</h2>
-          <pre>{JSON.stringify(results, null, 2)}</pre>
+          <pre style={{ background: '#f4f4f4', padding: '1rem', borderRadius: '4px' }}>
+            {JSON.stringify(results, null, 2)}
+          </pre>
         </div>
       )}
     </div>

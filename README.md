@@ -88,12 +88,63 @@ The plugin creates a simple, secure proxy to Algolia's search API.
 -   **Path**: `/search` (or your custom `searchEndpoint`)
 -   **Query Params**:
     -   `query`: The search term.
+    -   `enrichResults=true` (optional): If this parameter is set, the plugin will first get search results from Algolia and then use the resulting document IDs to fetch the full, up-to-date documents directly from Payload. This ensures that the data is always fresh and all access control rules are respected. However, it will be slower than a direct Algolia query.
     -   Any other valid Algolia search parameters can also be passed (e.g., `hitsPerPage`, `filters`).
 
 **Example:**
 
 ```
 GET /api/search?query=my-search-term&hitsPerPage=5
+```
+
+**Example with Result Enrichment:**
+
+```
+GET /api/search?query=my-search-term&enrichResults=true
+```
+
+### Result Enrichment
+
+By default, the search endpoint returns the raw search results directly from Algolia. This is extremely fast, but the data in the search index might not be perfectly in sync with your database, and it bypasses Payload's access control.
+
+By adding the `enrichResults=true` query parameter, you can tell the plugin to take the IDs from the Algolia search results and use them to fetch the complete documents from your Payload database.
+
+The final response object will be the original Algolia search result, with an added `enrichedHits` field. This field will be a map (or dictionary) where the keys are the document IDs and the values are the full, fresh documents from Payload.
+
+**Benefits of Enrichment:**
+
+-   **Data Freshness:** The data in `enrichedHits` is guaranteed to be the latest version from your database.
+-   **Security:** Payload's access control (both document and field-level) is fully respected for the documents in `enrichedHits`.
+-   **Preserves Algolia Metadata:** The original `hits` array from Algolia, which contains valuable metadata like `_highlightResult` and `_snippetResult`, is completely untouched.
+
+**Trade-offs:**
+
+-   **Performance:** This option is inherently slower because it requires an additional database query after the Algolia search. Use it when data accuracy and security are more critical than raw speed.
+-   **Frontend Implementation:** You will need to use the `enrichedHits` map on the client-side to access the full document data for each search result.
+
+**Example Enriched Response Structure:**
+
+```json
+{
+  "hits": [
+    {
+      "objectID": "60c7c5d5f1d2a5001f6b0e3d",
+      "title": "My Awesome Post",
+      "_highlightResult": { ... }
+    }
+  ],
+  "enrichedHits": {
+    "60c7c5d5f1d2a5001f6b0e3d": {
+      "id": "60c7c5d5f1d2a5001f6b0e3d",
+      "title": "My Awesome Post",
+      "content": "...",
+      "author": { ... }
+    }
+  },
+  "page": 0,
+  "nbHits": 1,
+  ...
+}
 ```
 
 ### Re-index a Collection
