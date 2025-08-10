@@ -123,7 +123,7 @@ The plugin accepts a configuration object with the following options:
 | `reindexEndpoint` | `string \| false` | ❌ | `'/reindex'` | Re-index endpoint path (set to `false` to disable) |
 | `configureIndexOnInit` | `boolean` | ❌ | `true` | Auto-configure Algolia index on startup |
 | `hideReindexButton` | `boolean` | ❌ | `false` | Hide re-index button in admin UI |
-| `reindexAccess` | `function` | ❌ | `({ req }) => !!req.user` | Access control for re-index operations |
+| `reindexAccess` | `function` | ❌ | `( req ) => !!req.user` | Access control for re-index operations |
 | `fieldTransformers` | `Record<string, FieldTransformer>` | ❌ | - | Custom field transformation functions |
 | `disabled` | `boolean` | ❌ | `false` | Disable the plugin entirely |
 
@@ -358,7 +358,7 @@ Control who can trigger re-indexing operations.
 By default, any authenticated user can trigger re-indexing:
 
 ```typescript
-const defaultAccess = ({ req }: { req: PayloadRequest }) => !!req.user;
+const defaultAccess = ( req: PayloadRequest ) => !!req.user;
 ```
 
 #### Custom Access Control
