@@ -107,6 +107,8 @@ The plugin will automatically:
 - Configure your Algolia index (if it exists)
 - Set up search and re-index endpoints
 
+To index existing documents, use re-index endpoints (or button in admin UI)
+
 ## Configuration
 
 ### Plugin Options
