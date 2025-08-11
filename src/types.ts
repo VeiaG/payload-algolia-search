@@ -28,7 +28,6 @@ export type FieldTransformer<T = unknown> = (
 ) => TransformedFieldValue
 
 export type CollectionAlgoliaConfig = {
-  index?: boolean
   indexFields: string[]
   slug: CollectionSlug
 }

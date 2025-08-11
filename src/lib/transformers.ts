@@ -13,8 +13,8 @@ const richTextTransformer: FieldTransformer<SerializedEditorState> = (value) =>
   value ? convertLexicalToPlaintext({ data: value }) : null
 
 export const defaultFieldTransformers: FieldTransformers = {
-  text: (value) => (Array.isArray(value) ? value.join(', ') : String(value)),
   richText: richTextTransformer,
+  text: (value) => (Array.isArray(value) ? value.join(', ') : String(value)),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   json: (value: any) => (value ? JSON.stringify(value) : null),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
