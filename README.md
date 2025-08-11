@@ -165,6 +165,7 @@ Perform search queries against your Algolia index.
 | `query` | `string` | Search term |
 | `enrichResults` | `boolean` | Fetch fresh documents from Payload |
 | `select` | `object` | Field selection for enriched results |
+| `depth` | `object` | Depth options for enriched results |
 | `hitsPerPage` | `number` | Number of results per page |
 | `filters` | `string` | Algolia filters |
 | *Any other Algolia search parameter* | *varies* | Passed directly to Algolia |
