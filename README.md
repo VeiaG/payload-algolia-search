@@ -143,10 +143,10 @@ interface CollectionAlgoliaConfig {
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `ALGOLIA_APP_ID` | Your Algolia Application ID | ✅ |
-| `ALGOLIA_API_KEY` | Your Algolia Admin API Key | ✅ |
+| `ALGOLIA_API_KEY` | Your Algolia Admin/Write API Key | ✅ |
 | `ALGOLIA_INDEX_NAME` | Target Algolia index name | ✅ |
 
-> ⚠️ **Security Note**: The `ALGOLIA_API_KEY` should be your Admin API Key and must be kept secret. Never expose it in client-side code.
+> ⚠️ **Security Note**: The `ALGOLIA_API_KEY` should be your Admin/Write API Key and must be kept secret. Never expose it in client-side code.
 
 ## API Reference
 
