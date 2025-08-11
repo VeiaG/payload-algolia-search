@@ -120,6 +120,7 @@ The plugin accepts a configuration object with the following options:
 | `credentials` | `PluginAlgoliaCredentials` | ✅ | - | Algolia connection details |
 | `collections` | `CollectionAlgoliaConfig[]` | ✅ | - | Collections to sync with Algolia |
 | `searchEndpoint` | `string \| false` | ❌ | `'/search'` | Search endpoint path (set to `false` to disable) |
+| `overrideAccess` | `boolean` | ❌ | `false` | If `true`, the plugin will override access control when enriching search results |
 | `reindexEndpoint` | `string \| false` | ❌ | `'/reindex'` | Re-index endpoint path (set to `false` to disable) |
 | `configureIndexOnInit` | `boolean` | ❌ | `true` | Auto-configure Algolia index on startup |
 | `hideReindexButton` | `boolean` | ❌ | `false` | Hide re-index button in admin UI |

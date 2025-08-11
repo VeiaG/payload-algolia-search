@@ -16,6 +16,7 @@ export const algoliaSearchPlugin =
     const pluginOptions: PluginAlgoliaSearchConfig = {
       configureIndexOnInit: true,
       disabled: false,
+      overrideAccess: false,
       reindexEndpoint: '/reindex',
       searchEndpoint: '/search',
       ...userPluginOptions,
@@ -90,7 +91,10 @@ export const algoliaSearchPlugin =
     // Add custom endpoint for search functionality
     if (pluginOptions.searchEndpoint) {
       config.endpoints.push({
-        handler: createSearchEndpointHandler(pluginOptions.credentials),
+        handler: createSearchEndpointHandler(
+          pluginOptions.credentials,
+          pluginOptions.overrideAccess,
+        ),
         method: 'get',
         path: pluginOptions.searchEndpoint,
       })

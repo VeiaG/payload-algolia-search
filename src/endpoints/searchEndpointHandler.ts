@@ -1,4 +1,4 @@
-import type { CollectionConfig, Payload, PayloadRequest, SelectType } from 'payload'
+import type { Payload, PayloadRequest, SelectType } from 'payload'
 
 import { algoliasearch, type SearchResponse } from 'algoliasearch'
 import { type ParsedQs } from 'qs-esm'
@@ -15,6 +15,7 @@ const getEnrichedDocsMap = async (
   payload: Payload,
   searchResult: SearchResponse,
   selectFields?: SelectFields,
+  overrideAccess?: boolean,
 ): Promise<Record<string, Record<string, unknown>>> => {
   const { hits } = searchResult
 
@@ -37,34 +38,51 @@ const getEnrichedDocsMap = async (
   // 2. Fetch full documents from Payload for each collection
   const enrichedDocsPromises = Object.entries(hitsByCollection).map(
     async ([collectionSlug, ids]) => {
-      const result = await payload.find({
-        collection: collectionSlug,
-        depth: 1, // Default depth
-        where: {
-          id: {
-            in: ids,
+      try {
+        const result = await payload.find({
+          collection: collectionSlug,
+          depth: 1, // Default depth
+          limit: ids.length,
+          overrideAccess: !!overrideAccess,
+          select: selectFields?.[collectionSlug],
+          where: {
+            id: {
+              in: ids,
+            },
           },
-        },
-        limit: ids.length,
-        select: selectFields?.[collectionSlug],
-        overrideAccess: false, // Ensure access control is respected
-      })
-      return result.docs
+        })
+        return result.docs
+      } catch (error) {
+        payload.logger.warn(
+          `Failed to fetch documents from collection "${collectionSlug}" for user. Access denied or other error:`,
+          error instanceof Error ? error.message : 'Unknown error',
+        )
+        // Return empty array instead of throwing
+        return []
+      }
     },
   )
 
-  console.log(
-    `Fetching ${hits.length} documents from Payload for search results... , \n ids = ${JSON.stringify(hits.map((hit) => hit.objectID))}`,
-  )
-  const allEnrichedDocs = (await Promise.all(enrichedDocsPromises)).flat()
+  try {
+    const allEnrichedDocs = (await Promise.all(enrichedDocsPromises)).flat()
 
-  console.log(`Enriched ${allEnrichedDocs.length} documents from Payload for search results.`)
-  // 3. Create a map for easy lookup
-  return allEnrichedDocs.reduce<Record<string, Record<string, unknown>>>((acc, doc) => {
-    acc[String(doc.id)] = doc
+    payload.logger.info(
+      `Enriched ${allEnrichedDocs.length} documents from Payload for search results.`,
+    )
 
-    return acc
-  }, {})
+    // 3. Create a map for easy lookup
+    return allEnrichedDocs.reduce<Record<string, Record<string, unknown>>>((acc, doc) => {
+      acc[String(doc.id)] = doc
+      return acc
+    }, {})
+  } catch (error) {
+    payload.logger.warn(
+      'Failed to enrich search results with full documents:',
+      error instanceof Error ? error.message : 'Unknown error',
+    )
+    // Return empty object if all enrichment fails
+    return {}
+  }
 }
 
 /**
@@ -94,10 +112,13 @@ function processSelect(select: ParsedQs | string | string[] | undefined): Select
   return processedSelect
 }
 
-export const createSearchEndpointHandler = (credentials: PluginAlgoliaCredentials) => {
+export const createSearchEndpointHandler = (
+  credentials: PluginAlgoliaCredentials,
+  overrideAccess?: boolean,
+) => {
   return async (req: PayloadRequest) => {
     try {
-      const { query: searchQuery, enrichResults, select, ...searchParams } = req.query
+      const { enrichResults, query: searchQuery, select, ...searchParams } = req.query
 
       if (!searchQuery || typeof searchQuery !== 'string') {
         return Response.json(
@@ -135,7 +156,12 @@ export const createSearchEndpointHandler = (credentials: PluginAlgoliaCredential
 
       if (enrichResults === 'true') {
         const selectFields = processSelect(select as ParsedQs)
-        enrichedDocsMap = await getEnrichedDocsMap(req.payload, searchResult, selectFields)
+        enrichedDocsMap = await getEnrichedDocsMap(
+          req.payload,
+          searchResult,
+          selectFields,
+          overrideAccess,
+        )
       }
 
       return Response.json({

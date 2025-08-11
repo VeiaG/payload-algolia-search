@@ -28,9 +28,9 @@ export type FieldTransformer<T = unknown> = (
 ) => TransformedFieldValue
 
 export type CollectionAlgoliaConfig = {
+  index?: boolean
   indexFields: string[]
   slug: CollectionSlug
-  index?: boolean
 }
 
 export type ReindexAccessFunction = (req: PayloadRequest) => boolean
@@ -68,7 +68,11 @@ export type PluginAlgoliaSearchConfig = {
    * @default false
    */
   hideReindexButton?: boolean
-
+  /**
+   * If true, the plugin will override access control in search endpoint enrichment.
+   * @default false
+   */
+  overrideAccess?: boolean
   /**
    * Function to determine access to the reindex endpoint.
    * This can be used to implement role-based access control.
