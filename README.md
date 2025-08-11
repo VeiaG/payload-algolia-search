@@ -280,6 +280,65 @@ const url = `/search?${qs.stringify(params)}`;
 }
 ```
 
+### Depth Control
+
+Control the depth of relationship population in enriched results to optimize performance and control data fetching.
+
+#### Why Use Depth Control?
+
+- **Performance Optimization**: Prevent over-fetching of deeply nested relationships
+- **Bandwidth Control**: Reduce response payload size
+- **Granular Control**: Different depth levels per collection type
+
+#### How It Works
+
+Add depth parameters to your search query to specify how deeply relationships should be populated for each collection:
+
+```javascript
+import qs from 'qs-esm';
+
+// Set different depths for different collections
+const depthConfig = {
+  posts: 3,    // Populate posts to depth 3
+  authors: 1,  // Populate authors to depth 1
+  categories: 2 // Populate categories to depth 2
+};
+
+const params = {
+  query: 'javascript',
+  enrichResults: true,
+  depth: depthConfig
+};
+
+const url = `/search?${qs.stringify(params)}`;
+
+// URL EXAMPLE
+/search?query=javascript&enrichResults=true&depth[posts]=3&depth[authors]=1&depth[categories]=2
+```
+#### Combined with Field Selection
+
+You can combine depth control with field selection for maximum optimization:
+
+```javascript
+const params = {
+  query: 'javascript',
+  enrichResults: true,
+  select: {
+    posts: { title: true, content: true, author: true },
+    authors: { name: true, bio: true }
+  },
+  depth: {
+    posts: 2,  // Populate author relationship
+    authors: 0 // Don't populate further relationships in authors
+  }
+};
+```
+Default Behavior
+
+- If no depth is specified for a collection, it defaults to depth 1
+- Invalid depth values are ignored and fall back to the default
+- Depth must be a non-negative integer (0, 1, 2, 3, etc.)
+
 ### Custom Field Transformers
 
 Transform complex field types into searchable formats before indexing in Algolia.
@@ -448,7 +507,7 @@ algoliaSearchPlugin({
 ### Frontend Search Implementation
 
 ```javascript
-// React search component example
+// React search component example with depth control
 const SearchResults = ({ query }) => {
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -459,9 +518,21 @@ const SearchResults = ({ query }) => {
       
       setLoading(true);
       try {
-        const response = await fetch(
-          `/search?query=${encodeURIComponent(query)}&enrichResults=true&hitsPerPage=20`
-        );
+        const params = {
+          query,
+          enrichResults: true,
+          hitsPerPage: 20,
+          depth: {
+            products: 2,  // Include category and brand relationships
+            categories: 1 // Don't over-fetch category relationships
+          },
+          select: {
+            products: { title: true, description: true, price: true, category: true, brand: true },
+            categories: { name: true, slug: true }
+          }
+        };
+
+        const response = await fetch(`/search?${qs.stringify(params)}`);
         const data = await response.json();
         setResults(data);
       } catch (error) {
@@ -488,7 +559,12 @@ const SearchResults = ({ query }) => {
               __html: hit._highlightResult.title.value 
             }} />
             {enrichedData && (
-              <p>{enrichedData.description}</p>
+              <>
+                <p>{enrichedData.description}</p>
+                {enrichedData.category && (
+                  <span>Category: {enrichedData.category.name}</span>
+                )}
+              </>
             )}
           </div>
         );

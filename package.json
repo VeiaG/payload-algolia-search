@@ -1,6 +1,6 @@
 {
   "name": "@veiag/payload-algolia-search",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Algolia Search Plugin for Payload CMS",
   "license": "MIT",
   "type": "module",

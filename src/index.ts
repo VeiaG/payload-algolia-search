@@ -91,10 +91,7 @@ export const algoliaSearchPlugin =
     // Add custom endpoint for search functionality
     if (pluginOptions.searchEndpoint) {
       config.endpoints.push({
-        handler: createSearchEndpointHandler(
-          pluginOptions.credentials,
-          pluginOptions.overrideAccess,
-        ),
+        handler: createSearchEndpointHandler(pluginOptions),
         method: 'get',
         path: pluginOptions.searchEndpoint,
       })

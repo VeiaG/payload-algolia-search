@@ -3,9 +3,10 @@ import type { Payload, PayloadRequest, SelectType } from 'payload'
 import { algoliasearch, type SearchResponse } from 'algoliasearch'
 import { type ParsedQs } from 'qs-esm'
 
-import type { PluginAlgoliaCredentials } from '../types.js'
+import type { PluginAlgoliaSearchConfig } from '../types.js'
 
 type SelectFields = Record<string, SelectType>
+type DepthFields = Record<string, number>
 
 /**
  * Fetches full documents from Payload to enrich the search results.
@@ -15,6 +16,7 @@ const getEnrichedDocsMap = async (
   payload: Payload,
   searchResult: SearchResponse,
   selectFields?: SelectFields,
+  depthFields?: DepthFields,
   overrideAccess?: boolean,
 ): Promise<Record<string, Record<string, unknown>>> => {
   const { hits } = searchResult
@@ -41,7 +43,7 @@ const getEnrichedDocsMap = async (
       try {
         const result = await payload.find({
           collection: collectionSlug,
-          depth: 1, // Default depth
+          depth: depthFields?.[collectionSlug] ?? 1, // Use collection-specific depth or default to 1
           limit: ids.length,
           overrideAccess: !!overrideAccess,
           select: selectFields?.[collectionSlug],
@@ -112,13 +114,34 @@ function processSelect(select: ParsedQs | string | string[] | undefined): Select
   return processedSelect
 }
 
-export const createSearchEndpointHandler = (
-  credentials: PluginAlgoliaCredentials,
-  overrideAccess?: boolean,
-) => {
+/**
+ * Processes the 'depth' query parameter into a format suitable for Payload's `find` operation.
+ * It expects a query structure like `depth[collection]=4`.
+ */
+function processDepth(depth: ParsedQs | string | string[] | undefined): DepthFields | undefined {
+  if (typeof depth !== 'object' || depth === null) {
+    return undefined
+  }
+
+  const processedDepth: DepthFields = {}
+
+  for (const [collection, value] of Object.entries(depth)) {
+    if (typeof value === 'string') {
+      const parsedValue = parseInt(value, 10)
+      if (!isNaN(parsedValue) && parsedValue >= 0) {
+        processedDepth[collection] = parsedValue
+      }
+    }
+  }
+
+  return processedDepth
+}
+
+export const createSearchEndpointHandler = (options: PluginAlgoliaSearchConfig) => {
+  const { credentials, overrideAccess } = options
   return async (req: PayloadRequest) => {
     try {
-      const { enrichResults, query: searchQuery, select, ...searchParams } = req.query
+      const { depth, enrichResults, query: searchQuery, select, ...searchParams } = req.query
 
       if (!searchQuery || typeof searchQuery !== 'string') {
         return Response.json(
@@ -156,10 +179,12 @@ export const createSearchEndpointHandler = (
 
       if (enrichResults === 'true') {
         const selectFields = processSelect(select as ParsedQs)
+        const depthFields = processDepth(depth as ParsedQs)
         enrichedDocsMap = await getEnrichedDocsMap(
           req.payload,
           searchResult,
           selectFields,
+          depthFields,
           overrideAccess,
         )
       }
@@ -173,7 +198,6 @@ export const createSearchEndpointHandler = (
       return Response.json(
         {
           details: error instanceof Error ? error.message : 'Unknown error',
-          error: 'Search failed',
         },
         {
           status: 500,
