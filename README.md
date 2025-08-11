@@ -19,6 +19,7 @@ A powerful, feature-rich plugin to sync your [Payload CMS](https://payloadcms.co
 - [Advanced Features](#advanced-features)
   - [Result Enrichment](#result-enrichment)
   - [Field Selection](#field-selection)
+  - [Depth Control](#depth-control)
   - [Custom Field Transformers](#custom-field-transformers)
   - [Access Control](#access-control)
 - [Examples](#examples)
